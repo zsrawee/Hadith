@@ -1,0 +1,238 @@
+import HadithDB from 'hadith';
+
+let db: HadithDB | null = null;
+let isConnecting = false;
+let connectPromise: Promise<void> | null = null;
+
+const COLLECTION_NAMES: Record<number, { ar: string; en: string }> = {
+  1: { ar: 'صحيح البخاري', en: 'Sahih al-Bukhari' },
+  2: { ar: 'صحيح مسلم', en: 'Sahih Muslim' },
+  3: { ar: 'سنن النسائي', en: "Sunan an-Nasa'i" },
+  10: { ar: 'سنن أبي داود', en: 'Sunan Abi Dawud' },
+  30: { ar: 'جامع الترمذي', en: 'Jami` at-Tirmidhi' },
+  38: { ar: 'سنن ابن ماجه', en: 'Sunan Ibn Majah' },
+  40: { ar: 'موطأ مالك', en: 'Muwatta Malik' },
+  50: { ar: 'مسند أحمد', en: 'Musnad Ahmad' },
+  101: { ar: 'الأربعون النووية', en: "An-Nawawi's 40 Hadith" },
+  102: { ar: 'الأربعينات', en: 'Collections of Forty' },
+  110: { ar: 'رياض الصالحين', en: 'Riyad as-Salihin' },
+  113: { ar: 'مشكاة المصابيح', en: 'Mishkat al-Masabih' },
+  115: { ar: 'الأدب المفرد', en: 'Al-Adab Al-Mufrad' },
+  130: { ar: 'الشمائل المحمدية', en: "Ash-Shama'il Al-Muhammadiyah" },
+  200: { ar: 'بلوغ المرام', en: 'Bulugh al-Maram' },
+  300: { ar: 'حصن المسلم', en: 'Hisn al-Muslim' },
+};
+
+export function getCollectionName(id: number): { ar: string; en: string } {
+  return COLLECTION_NAMES[id] || { ar: `المجموعة ${id}`, en: `Collection ${id}` };
+}
+
+export function getCollectionNames(): Record<number, { ar: string; en: string }> {
+  return COLLECTION_NAMES;
+}
+
+async function getDB(): Promise<HadithDB> {
+  if (db) return db;
+  
+  if (!isConnecting) {
+    isConnecting = true;
+    connectPromise = (async () => {
+      try {
+        const instance = new HadithDB();
+        await instance.connect();
+        db = instance;
+        console.log('✅ Hadith DB connected');
+      } catch (err) {
+        console.error('❌ DB connection failed:', err);
+        throw err;
+      } finally {
+        isConnecting = false;
+      }
+    })();
+  }
+  
+  await connectPromise;
+  return db!;
+}
+
+// Helper to query English hadiths directly (fixes type issues)
+async function queryEnglishByUrn(urn: string) {
+  const instance = await getDB();
+  const sqlDb = (instance as any).db;
+  if (!sqlDb) return null;
+  
+  try {
+    const stmt = sqlDb.prepare(`
+      SELECT 
+        c0 as arabic_urn,
+        c1 as urn,
+        c2 as collection_id,
+        c3 as narrator_prefix,
+        c4 as content,
+        c5 as narrator_postfix,
+        c6 as comments,
+        c7 as grades,
+        c8 as reference
+      FROM hadith_en_content 
+      WHERE c0 = ?
+    `);
+    stmt.bind([parseInt(urn)]);
+    let result = null;
+    if (stmt.step()) {
+      result = stmt.getAsObject();
+    }
+    stmt.free();
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+// Search Arabic hadith content
+async function searchArabicContent(query: string, collectionId?: number, limit = 30, offset = 0) {
+  const instance = await getDB();
+  const sqlDb = (instance as any).db;
+  if (!sqlDb) return [];
+  
+  const likeQuery = `%${query.replace(/'/g, "''")}%`;
+  
+  let sql = `
+    SELECT 
+      c0 as urn, c1 as collection_id, c2 as book_id,
+      c3 as display_number, c4 as order_in_book,
+      c6 as narrator_prefix, c7 as content,
+      c8 as narrator_postfix, c13 as grades
+    FROM hadith_content
+    WHERE c7 LIKE ?
+  `;
+  const params: any[] = [likeQuery];
+  
+  if (collectionId) {
+    sql += ' AND c1 = ?';
+    params.push(collectionId);
+  }
+  sql += ' ORDER BY c1, c4 LIMIT ? OFFSET ?';
+  params.push(limit + 1, offset);
+  
+  const stmt = sqlDb.prepare(sql);
+  stmt.bind(params);
+  const results: any[] = [];
+  while (stmt.step()) results.push(stmt.getAsObject());
+  stmt.free();
+  return results.slice(0, limit);
+}
+
+// Search English hadith content
+async function searchEnglishContent(query: string, collectionId?: number, limit = 30, offset = 0) {
+  const instance = await getDB();
+  const sqlDb = (instance as any).db;
+  if (!sqlDb) return [];
+  
+  const likeQuery = `%${query.replace(/'/g, "''")}%`;
+  
+  let sql = `
+    SELECT 
+      c0 as arabic_urn, c1 as urn, c2 as collection_id,
+      c3 as narrator_prefix, c4 as content,
+      c5 as narrator_postfix, c7 as grades, c8 as reference
+    FROM hadith_en_content
+    WHERE c4 LIKE ?
+  `;
+  const params: any[] = [likeQuery];
+  
+  if (collectionId) {
+    sql += ' AND c2 = ?';
+    params.push(collectionId);
+  }
+  sql += ' ORDER BY c2, c0 LIMIT ? OFFSET ?';
+  params.push(limit + 1, offset);
+  
+  const stmt = sqlDb.prepare(sql);
+  stmt.bind(params);
+  const results: any[] = [];
+  while (stmt.step()) results.push(stmt.getAsObject());
+  stmt.free();
+  return results.slice(0, limit);
+}
+
+export const hadithAPI = {
+  getDB,
+  
+  async getCollections() {
+    const instance = await getDB();
+    return instance.getCollections();
+  },
+  
+  async getCollection(id: number) {
+    const instance = await getDB();
+    return instance.getCollection(id);
+  },
+  
+  async getBooks(collectionId: number) {
+    const instance = await getDB();
+    return instance.getBooks(collectionId);
+  },
+  
+  async getHadiths(collectionId: number, options?: { limit?: number; offset?: number; bookId?: number }) {
+    const instance = await getDB();
+    const hadiths = await instance.getHadithsByCollection(collectionId, {
+      limit: options?.limit || 20,
+      offset: options?.offset || 0,
+      bookId: options?.bookId || null,
+    });
+    
+    const enHadiths = [];
+    for (const h of hadiths) {
+      const en = await queryEnglishByUrn(h.urn);
+      if (en) enHadiths.push(en);
+    }
+    
+    return { arabic: hadiths, english: enHadiths };
+  },
+  
+  async getHadithByUrn(urn: string) {
+    const instance = await getDB();
+    let arabic = await instance.getHadithByUrn(urn);
+    
+    // Fallback to direct query
+    if (!arabic) {
+      const sqlDb = (instance as any).db;
+      if (sqlDb) {
+        const stmt = sqlDb.prepare(`
+          SELECT c0 as urn, c1 as collection_id, c2 as book_id, c3 as display_number,
+                 c4 as order_in_book, c5 as chapter_id, c6 as narrator_prefix, c7 as content,
+                 c8 as narrator_postfix, c13 as grades, c14 as narrators, c12 as comments
+          FROM hadith_content WHERE c0 = ?
+        `);
+        stmt.bind([parseInt(urn)]);
+        if (stmt.step()) arabic = stmt.getAsObject();
+        stmt.free();
+      }
+    }
+    
+    const english = await queryEnglishByUrn(urn);
+    return { arabic, english };
+  },
+  
+  async getRandomHadith(collectionId?: number) {
+    const instance = await getDB();
+    const arabic = await instance.getRandomHadith(collectionId || null);
+    let english = null;
+    if (arabic) english = await queryEnglishByUrn(arabic.urn);
+    return { arabic, english };
+  },
+  
+  async search(query: string, collectionId?: number, limit = 30) {
+    const [arabic, english] = await Promise.all([
+      searchArabicContent(query, collectionId, limit),
+      searchEnglishContent(query, collectionId, limit),
+    ]);
+    return { arabic, english, total: arabic.length + english.length };
+  },
+  
+  async getStats() {
+    const instance = await getDB();
+    const info = await instance.getInfo();
+    return info;
+  },
+};

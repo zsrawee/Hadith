@@ -1,0 +1,15 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/collections/[id]/books/route": "app/api/collections/[id]/books/route.js",
+  "/api/collections/[id]/route": "app/api/collections/[id]/route.js",
+  "/api/collections/route": "app/api/collections/route.js",
+  "/api/random/route": "app/api/random/route.js",
+  "/api/hadiths/[urn]/route": "app/api/hadiths/[urn]/route.js",
+  "/api/search/route": "app/api/search/route.js",
+  "/api/hadiths/route": "app/api/hadiths/route.js",
+  "/api/stats/route": "app/api/stats/route.js",
+  "/[locale]/browse/page": "app/[locale]/browse/page.js",
+  "/[locale]/search/page": "app/[locale]/search/page.js",
+  "/[locale]/random/page": "app/[locale]/random/page.js",
+  "/[locale]/page": "app/[locale]/page.js"
+}
