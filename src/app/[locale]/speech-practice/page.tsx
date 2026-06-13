@@ -83,11 +83,19 @@ function SpeechPracticeContent() {
   const handleRecordingComplete = async (audioBlob: Blob) => {
     if (!hadith) return;
     setIsRecording(true);
+    setError(null);
+    setResult(null);
     const arabicText = hadith.arabic?.content || hadith.arabic?.text || "";
     try {
-      setResult(await analyzeArabicSpeech(audioBlob, arabicText.replace(/:\s*/, " ").trim()));
-    } catch {
-      setError("Failed to analyze recording");
+      const speechResult = await analyzeArabicSpeech(audioBlob, arabicText.replace(/:\s*/, " ").trim());
+      // If accuracy is 0 and feedback mentions API key, show as guidance not error
+      if (speechResult.accuracy === 0 && speechResult.feedback.some(f => f.includes('API key'))) {
+        setResult(speechResult); // Show the guidance UI
+      } else {
+        setResult(speechResult);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to analyze recording. Check console for details.");
     } finally {
       setIsRecording(false);
     }
@@ -197,35 +205,50 @@ function SpeechPracticeContent() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {result.wordResults.map((word: any, idx: number) => (
-                      <span
-                        key={idx}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-arabic ${
-                          word.match
-                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                            : "bg-red-500/10 text-red-400 border border-red-500/20"
-                        }`}
-                        dir="rtl"
-                      >
-                        {word.word}
-                        {word.similarity !== undefined && (
-                          <span className="ml-1.5 text-xs opacity-70">
-                            {Math.round(word.similarity * 100)}%
-                          </span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
+                  {result.wordResults.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {result.wordResults.map((word: any, idx: number) => (
+                        <span
+                          key={idx}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-arabic ${
+                            word.match
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : "bg-red-500/10 text-red-400 border border-red-500/20"
+                          }`}
+                          dir="rtl"
+                        >
+                          {word.word}
+                          {word.tashkeelAccuracy !== undefined && (
+                            <span className="ml-1.5 text-xs opacity-70" title="Tashkeel accuracy">
+                              ح{word.tashkeelAccuracy}%
+                            </span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {result.feedback.length > 0 && (
-                    <div className="bg-gray-800/50 rounded-lg p-4">
+                    <div className={`rounded-lg p-4 ${
+                      result.accuracy === 0
+                        ? 'bg-amber-500/10 border border-amber-500/20'
+                        : 'bg-gray-800/50'
+                    }`}>
                       <h4 className="text-sm font-medium text-gray-300 mb-2">{t("speech.results.feedback")}</h4>
                       <ul className="space-y-1.5">
                         {result.feedback.map((item: string, idx: number) => (
                           <li key={idx} className="text-sm text-gray-400 flex items-start gap-2">
-                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 shrink-0" />
-                            {item}
+                            <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                              result.accuracy === 0 ? 'bg-amber-500' : 'bg-amber-500'
+                            }`} />
+                            {item.startsWith('http') ? (
+                              <a href={item} target="_blank" rel="noopener noreferrer"
+                                 className="text-amber-400 hover:text-amber-300 underline">
+                                {item}
+                              </a>
+                            ) : (
+                              item
+                            )}
                           </li>
                         ))}
                       </ul>

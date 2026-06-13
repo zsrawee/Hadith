@@ -1,101 +1,187 @@
 {
   "app": {
-    "title": "Nur al-Hadith",
-    "subtitle": "The Light of Prophetic Traditions",
-    "description": "Explore the timeless wisdom of Prophet Muhammad ﷺ through authenticated hadith collections. Search, browse, and discover the treasures of Islamic scholarship."
+    "title": "نور الحديث",
+    "subtitle": "نور الأحاديث النبوية",
+    "description": "استكشف الحكمة الخالدة للنبي محمد ﷺ من خلال مجموعات الأحاديث الموثقة. ابحث وتصفح واكتشف كنوز التراث الإسلامي."
   },
   "nav": {
-    "home": "Home",
-    "search": "Search",
-    "browse": "Browse",
-    "random": "Random",
-    "language": "Language"
+    "home": "الرئيسية",
+    "search": "بحث",
+    "browse": "تصفح",
+    "random": "عشوائي",
+    "speech": "نطق",
+    "language": "اللغة"
   },
   "home": {
     "bismillah": "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
-    "featured": "Featured Hadith",
-    "collections": "Major Collections",
+    "featured": "حديث مميز",
+    "collections": "المجموعات الرئيسية",
     "stats": {
-      "collections": "Collections",
-      "books": "Books",
-      "chapters": "Chapters"
+      "collections": "مجموعة",
+      "books": "كتاب",
+      "chapters": "باب"
     },
     "cta": {
-      "search": "Search Hadith",
-      "random": "Random Hadith"
-    }
+      "search": "ابحث في الأحاديث",
+      "random": "حديث عشوائي"
+    },
+    "searchPlaceholder": "ابحث في الأحاديث بالعربية أو الإنجليزية...",
+    "searchButton": "بحث",
+    "randomButton": "حديث عشوائي",
+    "description": "استكشف الحكمة الخالدة للنبي محمد ﷺ من خلال مجموعات الأحاديث الموثقة."
+  },
+  "stats": {
+    "hadiths": "حديث",
+    "collections": "مجموعة",
+    "narrators": "راوي"
   },
   "search": {
-    "title": "Search Hadith",
-    "placeholder": "Search hadith in Arabic or English...",
+    "title": "بحث في الأحاديث",
+    "subtitle": "بحث في جميع مجموعات الأحاديث",
+    "placeholder": "ابحث في الأحاديث بالعربية أو الإنجليزية...",
+    "button": "بحث",
+    "allCollections": "الكل",
+    "resultsCount": "تم العثور على {count} نتيجة",
+    "tryAgain": "حاول مرة أخرى",
+    "noResults": "لم يتم العثور على نتائج",
     "filters": {
-      "collection": "Collection",
-      "all": "All Collections",
-      "language": "Language",
-      "both": "Both",
-      "arabic": "Arabic",
-      "english": "English"
+      "collection": "المجموعة",
+      "all": "جميع المجموعات",
+      "language": "اللغة",
+      "both": "الكل",
+      "arabic": "العربية",
+      "english": "الإنجليزية"
     },
-    "results": "results",
-    "result": "result",
-    "for": "for",
+    "results": "نتيجة",
+    "result": "نتيجة",
+    "for": "لـ",
     "noResults": {
-      "title": "No results found",
-      "desc": "Try different keywords or browse collections directly."
+      "title": "لا توجد نتائج",
+      "desc": "جرّب كلمات بحث مختلفة أو تصفح المجموعات مباشرة."
     },
     "welcome": {
-      "title": "Search the Hadith Treasury",
-      "desc": "Type a keyword in Arabic or English to search across all collections."
+      "title": "ابحث في كنز الأحاديث",
+      "desc": "اكتب كلمة بالعربية أو الإنجليزية للبحث في جميع المجموعات."
     }
   },
   "browse": {
-    "title": "Browse Collections",
-    "collections": "Collections",
-    "select": "Select a Collection",
-    "selectDesc": "Choose a hadith collection from the sidebar to browse its contents.",
-    "books": "books",
-    "hadiths": "Hadiths",
-    "inBook": "in this Book",
-    "shown": "shown"
+    "title": "تصفح المجموعات",
+    "subtitle": "تصفح مجموعات الأحاديث حسب الكتاب",
+    "collections": "المجموعات",
+    "select": "اختر مجموعة",
+    "selectDesc": "اختر مجموعة حديثية من القائمة الجانبية لتصفح محتوياتها.",
+    "books": "كتاب",
+    "hadiths": "حديث",
+    "inBook": "في هذا الكتاب",
+    "shown": "معروض",
+    "loadMore": "المزيد",
+    "loading": "جاري التحميل...",
+    "noHadiths": "لم يتم العثور على أحاديث"
   },
   "random": {
-    "title": "Random Hadith",
-    "generate": "Generate Random",
-    "all": "All Collections",
-    "placeholder": "Click the button to receive a random hadith"
+    "title": "حديث عشوائي",
+    "subtitle": "اكتشف حديثاً عشوائياً من مجموعاتنا",
+    "generate": "حديث عشوائي",
+    "another": "حديث آخر",
+    "tryAgain": "حاول مرة أخرى",
+    "error": "فشل تحميل الحديث",
+    "all": "جميع المجموعات",
+    "placeholder": "اضغط على الزر للحصول على حديث عشوائي"
   },
   "hadith": {
-    "copyArabic": "Copy Arabic",
-    "copyEnglish": "Copy English",
-    "copied": "Copied!",
-    "copiedArabic": "Arabic text copied",
-    "copiedEnglish": "English text copied",
-    "chain": "Chain of Narration (Sanad)",
-    "narrator": "Narrator",
-    "prophet": "Prophet Muhammad ﷺ",
-    "grade": "Grade",
-    "collection": "Collection",
-    "book": "Book",
-    "number": "Number",
-    "reference": "Reference",
-    "narrators": "Narrators"
+    "copyArabic": "نسخ النص العربي",
+    "copyEnglish": "نسخ النص الإنجليزي",
+    "copy": "نسخ",
+    "copied": "تم النسخ!",
+    "copiedArabic": "تم نسخ النص العربي",
+    "copiedEnglish": "تم نسخ النص الإنجليزي",
+    "chain": "سند الحديث",
+    "narrator": "الراوي",
+    "prophet": "النبي محمد ﷺ",
+    "grade": "الحكم",
+    "collection": "المجموعة",
+    "book": "الكتاب",
+    "number": "الرقم",
+    "reference": "المرجع",
+    "narrators": "الرواة",
+    "share": "مشاركة",
+    "practice": "تمرين النطق",
+    "showMore": "المزيد",
+    "showLess": "أقل",
+    "markRead": "تحديد كمقروء",
+    "markedRead": "مقروء"
   },
   "grade": {
-    "sahih": "Sahih (صحيح)",
-    "hasan": "Hasan (حسن)",
-    "daif": "Da'if (ضعيف)"
+    "sahih": "صحيح",
+    "hasan": "حسن",
+    "daif": "ضعيف"
+  },
+  "speech": {
+    "title": "تمرين النطق",
+    "subtitle": "اقرأ الحديث بصوت عالٍ بالعربية وتحقق من نطقك",
+    "searchPlaceholder": "ابحث عن حديث للتمرين...",
+    "recordingHint": "سجّل نفسك وأنت تقرأ الحديث أعلاه",
+    "startRecording": "ابدأ التسجيل",
+    "stopRecording": "إيقاف التسجيل",
+    "recordAgain": "تسجيل مرة أخرى",
+    "readThis": "تحليل التسجيل",
+    "free": "يتطلب مفتاح OpenAI API. انظر .env.example للإعداد.",
+    "loadFailed": "فشل تحميل الحديث",
+    "newHadith": "حديث آخر",
+    "accuracy": "الدقة",
+    "tipsTitle": "💡 نصائح للتحسين",
+    "wordAnalysis": "📝 تحليل كلمة بكلمة",
+    "whatYouSaid": "🎤 ما قلته",
+    "originalText": "📖 النص الأصلي",
+    "noSpeech": "(لم يتم اكتشاف كلام)",
+    "practiceAgain": "تمرن مرة أخرى",
+    "tryAnother": "جرب حديث آخر",
+    "browserInfo": "🎤 يتم إرسال الصوت بشكل آمن إلى OpenAI Whisper للنسخ. قم بتعيين OPENAI_API_KEY في ملف .env.local.",
+    "showEnglish": "إظهار الترجمة الإنجليزية",
+    "hideEnglish": "إخفاء الترجمة الإنجليزية",
+    "results": {
+      "title": "نتائج التحليل",
+      "overall": "النتيجة الإجمالية",
+      "wordAccuracy": "دقة الكلمات",
+      "pronunciation": "النطق",
+      "wordBreakdown": "تفصيل الكلمات",
+      "feedback": "ملاحظات"
+    },
+    "result": {
+      "title": "اكتمل التمرين",
+      "subtitle": "واصل التمرين لتحسين نطقك",
+      "tryAgain": "تمرن مرة أخرى"
+    }
+  },
+  "speech_recorder": {
+    "instructions": "اقرأ الحديث أعلاه بصوت عالٍ بالعربية. المتصفح سيستمع ويتحقق من نطقك.",
+    "startRecording": "ابدأ التسجيل",
+    "cancel": "إلغاء",
+    "prepare": "استعد لقراءة الحديث",
+    "reading": "جاري قراءة الحديث...",
+    "doneReading": "انتهيت من القراءة",
+    "noSpeechDetected": "لم يتم اكتشاف كلام. حاول مرة أخرى.",
+    "noMicrophone": "لم يتم العثور على ميكروفون. تحقق من الميكروفون الخاص بك.",
+    "micDenied": "تم رفض الوصول إلى الميكروفون. يرجى السماح بالوصول إلى الميكروفون.",
+    "langNotSupported": "التعرف على الكلام بالعربية غير مدعوم في هذا المتصفح. جرب Chrome.",
+    "tryAgain": "حاول مرة أخرى",
+    "analyzingText": "جارٍ تحليل نطقك...",
+    "recorded": "تم تحليل التسجيل!",
+    "browserNotSupported": "متصفحك لا يدعم التعرف على الكلام. استخدم Chrome أو Edge لهذه الميزة."
   },
   "footer": {
     "salawat": "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ",
-    "copyright": "© 2026 Nur al-Hadith — The Light of Prophetic Traditions"
+    "copyright": "© 2026 نور الحديث — نور الأحاديث النبوية",
+    "description": "مكتبة رقمية لمجموعات الأحاديث الموثقة.",
+    "hadithDisclaimer": "المحتوى من قواعد بيانات أحاديث موثقة."
   },
-  "loading": "Loading...",
+  "loading": "جاري التحميل...",
   "error": {
-    "notFound": "Not found",
-    "loadFailed": "Failed to load data",
-    "tryAgain": "Please try again."
+    "notFound": "غير موجود",
+    "loadFailed": "فشل تحميل البيانات",
+    "tryAgain": "يرجى المحاولة مرة أخرى."
   },
   "keyboard": {
-    "searchShortcut": "Press Ctrl+/ to search"
+    "searchShortcut": "اضغط Ctrl+/ للبحث"
   }
 }

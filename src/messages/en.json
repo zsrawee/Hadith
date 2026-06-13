@@ -9,6 +9,7 @@
     "search": "Search",
     "browse": "Browse",
     "random": "Random",
+    "speech": "Speech",
     "language": "Language"
   },
   "home": {
@@ -23,11 +24,26 @@
     "cta": {
       "search": "Search Hadith",
       "random": "Random Hadith"
-    }
+    },
+    "searchPlaceholder": "Search hadith in Arabic or English...",
+    "searchButton": "Search",
+    "randomButton": "Random Hadith",
+    "description": "Explore the timeless wisdom of Prophet Muhammad ﷺ through authenticated hadith collections."
+  },
+  "stats": {
+    "hadiths": "Hadiths",
+    "collections": "Collections",
+    "narrators": "Narrators"
   },
   "search": {
     "title": "Search Hadith",
+    "subtitle": "Search across all hadith collections",
     "placeholder": "Search hadith in Arabic or English...",
+    "button": "Search",
+    "allCollections": "All",
+    "resultsCount": "{count} results found",
+    "tryAgain": "Try Again",
+    "noResults": "No results found",
     "filters": {
       "collection": "Collection",
       "all": "All Collections",
@@ -50,23 +66,32 @@
   },
   "browse": {
     "title": "Browse Collections",
+    "subtitle": "Browse hadith collections by book",
     "collections": "Collections",
     "select": "Select a Collection",
     "selectDesc": "Choose a hadith collection from the sidebar to browse its contents.",
     "books": "books",
-    "hadiths": "Hadiths",
+    "hadiths": "hadiths",
     "inBook": "in this Book",
-    "shown": "shown"
+    "shown": "shown",
+    "loadMore": "Load More",
+    "loading": "Loading...",
+    "noHadiths": "No hadiths found"
   },
   "random": {
     "title": "Random Hadith",
+    "subtitle": "Discover a random hadith from our collections",
     "generate": "Generate Random",
+    "another": "Another Hadith",
+    "tryAgain": "Try Again",
+    "error": "Failed to load hadith",
     "all": "All Collections",
     "placeholder": "Click the button to receive a random hadith"
   },
   "hadith": {
     "copyArabic": "Copy Arabic",
     "copyEnglish": "Copy English",
+    "copy": "Copy",
     "copied": "Copied!",
     "copiedArabic": "Arabic text copied",
     "copiedEnglish": "English text copied",
@@ -78,16 +103,77 @@
     "book": "Book",
     "number": "Number",
     "reference": "Reference",
-    "narrators": "Narrators"
+    "narrators": "Narrators",
+    "share": "Share",
+    "practice": "Practice Reading",
+    "showMore": "Show More",
+    "showLess": "Show Less",
+    "markRead": "Mark as Read",
+    "markedRead": "Read"
   },
   "grade": {
     "sahih": "Sahih (صحيح)",
     "hasan": "Hasan (حسن)",
     "daif": "Da'if (ضعيف)"
   },
+  "speech": {
+    "title": "Speech Practice",
+    "subtitle": "Read the hadith aloud in Arabic and check your pronunciation",
+    "searchPlaceholder": "Search for a hadith to practice...",
+    "recordingHint": "Record yourself reading the hadith above",
+    "startRecording": "Start Recording",
+    "stopRecording": "Stop Recording",
+    "recordAgain": "Record Again",
+    "readThis": "Analyze Recording",
+    "free": "Requires OpenAI API key. See .env.example for setup.",
+    "loadFailed": "Failed to load hadith",
+    "newHadith": "New Hadith",
+    "accuracy": "Accuracy",
+    "tipsTitle": "💡 Tips to Improve",
+    "wordAnalysis": "📝 Word-by-Word Analysis",
+    "whatYouSaid": "🎤 What You Said",
+    "originalText": "📖 Original Text",
+    "noSpeech": "(No speech detected)",
+    "practiceAgain": "Practice Again",
+    "tryAnother": "Try Another Hadith",
+    "browserInfo": "🎤 Audio is sent securely to OpenAI Whisper for transcription. Configure your API key in the .env.local file.",
+    "showEnglish": "Show English Translation",
+    "hideEnglish": "Hide English Translation",
+    "results": {
+      "title": "Analysis Results",
+      "overall": "Overall Score",
+      "wordAccuracy": "Word Accuracy",
+      "pronunciation": "Pronunciation",
+      "wordBreakdown": "Word Breakdown",
+      "feedback": "Feedback"
+    },
+    "result": {
+      "title": "Practice Complete",
+      "subtitle": "Keep practicing to improve your pronunciation",
+      "tryAgain": "Practice Again"
+    }
+  },
+  "speech_recorder": {
+    "instructions": "Read the hadith above aloud in Arabic. The browser will listen and check your pronunciation.",
+    "startRecording": "Start Recording",
+    "cancel": "Cancel",
+    "prepare": "Prepare to read the hadith",
+    "reading": "Reading the hadith...",
+    "doneReading": "Done Reading",
+    "noSpeechDetected": "No speech detected. Please try again.",
+    "noMicrophone": "Microphone not found. Please check your microphone.",
+    "micDenied": "Microphone access denied. Please allow microphone access.",
+    "langNotSupported": "Arabic speech recognition is not supported on this browser. Try Chrome.",
+    "tryAgain": "Try again",
+    "analyzingText": "Analyzing your pronunciation...",
+    "recorded": "Recording analyzed!",
+    "browserNotSupported": "Your browser doesn't support speech recognition. Use Chrome or Edge for this feature."
+  },
   "footer": {
     "salawat": "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ",
-    "copyright": "© 2026 Nur al-Hadith — The Light of Prophetic Traditions"
+    "copyright": "© 2026 Nur al-Hadith — The Light of Prophetic Traditions",
+    "description": "A digital library of authenticated hadith collections.",
+    "hadithDisclaimer": "Content sourced from verified hadith databases."
   },
   "loading": "Loading...",
   "error": {

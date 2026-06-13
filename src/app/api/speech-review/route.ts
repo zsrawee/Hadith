@@ -1,283 +1,368 @@
+/**
+ * Speech Review API
+ *
+ * Transcribes the user's recorded speech using OpenAI Whisper (requires API key),
+ * then compares it to the target Hadith text with diacritics-aware (tashkeel) analysis.
+ *
+ * ── API Key ──────────────────────────────────────────────────────────────
+ * Set OPENAI_API_KEY in .env.local (copy from .env.example).
+ * Without it, the API returns a clear error — no random/demo mode.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
 
-// Initialize OpenAI (will be null if no API key)
-const getOpenAI = () => {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) return null;
-  return new OpenAI({ apiKey: key });
-};
+// ═══════════════════════════════════════════════════════════════════════════
+// Config
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Free Hugging Face Whisper inference (no API key needed for public models)
-async function transcribeWithHuggingFace(audioBlob: Blob): Promise<string | null> {
-  try {
-    // Use a free public Whisper model on Hugging Face
-    const response = await fetch(
-      'https://api-inference.huggingface.co/models/openai/whisper-large-v3',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'audio/webm',
-          // No Authorization header needed for public models (rate limited)
-        },
-        body: audioBlob,
-      }
-    );
-
-    if (!response.ok) {
-      console.error('Hugging Face transcription failed:', response.status);
-      return null;
-    }
-
-    const data = await response.json();
-    return data.text?.trim() || null;
-  } catch (err) {
-    console.error('Hugging Face transcription error:', err);
-    return null;
-  }
+function getOpenAIKey(): string | null {
+  return process.env.OPENAI_API_KEY?.trim() || null;
 }
 
-// Normalize Arabic text for comparison - removes diacritics (harakat) and normalizes letters
+// ═══════════════════════════════════════════════════════════════════════════
+// Arabic Text Utilities
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Arabic diacritics (tashkeel) Unicode ranges:
+ *  064B–065F  : Standard Quranic diacritics (fatha, damma, kasra, shadda, sukun, tanwin, etc.)
+ *  0670       : Superscript alef
+ *  06D6–06DC  : Small high diacritics
+ *  06DF–06E8  : Additional diacritics
+ *  06EA–06ED  : Additional diacritics
+ */
+const TASHKEEL_PATTERN = /[\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED]/g;
+
+/** Strip all diacritics (tashkeel) from Arabic text, leaving bare letters. */
+function stripTashkeel(text: string): string {
+  return text.replace(TASHKEEL_PATTERN, '');
+}
+
+/** Normalize Arabic letters for fuzzy comparison (excludes tashkeel). */
 function normalizeArabic(text: string): string {
   return text
-    // Remove all harakat (diacritics): fatha, damma, kasra, sukun, shadda, tanwin, etc.
-    .replace(/[\u064B-\u065F\u0670\u06D6-\u06DC]/g, '')
-    // Normalize alef variants (hamza on alef, alef madda, etc.) to bare alef
+    .replace(TASHKEEL_PATTERN, '')
     .replace(/[أإآ]/g, 'ا')
-    // Normalize ya variants (alef maksura, ya with hamza) to ya
     .replace(/[ىئ]/g, 'ي')
-    // Normalize waw with hamza to waw
     .replace(/ؤ/g, 'و')
-    // Normalize ta marbuta to ha
     .replace(/ة/g, 'ه')
-    // Normalize multiple spaces
+    .replace(/\u0640/g, '')             // Tatweel/kashida
     .replace(/\s+/g, ' ')
-    // Remove punctuation but keep Arabic letters, numbers, and spaces
-    // Arabic range: \u0600-\u06FF, \u0750-\u077F, \u08A0-\u08FF, \uFB50-\uFDFF, \uFE70-\uFEFF
-    .replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\d\s]/g, '')
     .trim()
     .toLowerCase();
 }
 
-// Remove duplicate words (common issue with speech recognition)
-// Handles consecutive duplicates AND repeated phrases
-function removeDuplicateWords(text: string): string {
-  const words = text.trim().split(/\s+/);
-  const result: string[] = [];
-  const seenNormalized = new Set<string>();
-  
-  for (const word of words) {
-    const normalized = normalizeArabic(word);
-    if (!normalized) continue;
-    
-    // Skip if we've seen this normalized word before
-    // This catches both consecutive AND non-consecutive duplicates
-    if (seenNormalized.has(normalized)) {
-      continue;
+/**
+ * Extract which diacritics (tashkeel) are on each letter.
+ * Returns a map: letter-position → set of diacritic chars.
+ */
+function extractTashkeel(text: string): Map<number, string[]> {
+  const map = new Map<number, string[]>();
+  let letterIdx = -1;
+  for (const ch of text) {
+    if (TASHKEEL_PATTERN.test(ch)) {
+      if (letterIdx >= 0) {
+        const existing = map.get(letterIdx) || [];
+        existing.push(ch);
+        map.set(letterIdx, existing);
+      }
+    } else if (/\S/.test(ch)) {
+      letterIdx++;
     }
-    
-    seenNormalized.add(normalized);
-    result.push(word);
   }
-  
-  return result.join(' ');
+  return map;
 }
 
-// Calculate word-level similarity
-function wordSimilarity(original: string, spoken: string): { 
-  score: number; 
-  correctWords: string[];
-  wrongWords: string[];
-  missingWords: string[];
-  extraWords: string[];
-} {
-  const origWords = normalizeArabic(original).split(/\s+/).filter(Boolean);
-  const spokenWords = normalizeArabic(spoken).split(/\s+/).filter(Boolean);
+/** Compute tashkeel accuracy between reference and spoken text. */
+function compareTashkeel(
+  refTashkeel: Map<number, string[]>,
+  spokenTashkeel: Map<number, string[]>,
+  letterCount: number,
+): { correct: number; total: number } {
+  let correct = 0;
+  let total = 0;
+  for (let i = 0; i < letterCount; i++) {
+    const ref = refTashkeel.get(i) || [];
+    const spoken = spokenTashkeel.get(i) || [];
+    // Compare each diacritic
+    const refSet = new Set(ref);
+    const spokenSet = new Set(spoken);
+    for (const d of refSet) {
+      total++;
+      if (spokenSet.has(d)) correct++;
+    }
+  }
+  return { correct, total: Math.max(total, 1) };
+}
 
-  const correctWords: string[] = [];
-  const wrongWords: string[] = [];
-  const missingWords: string[] = [];
-  
-  let matches = 0;
-  
-  // Find matching words (order-aware)
+// ═══════════════════════════════════════════════════════════════════════════
+// Comparison Engine
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface WordMatch {
+  word: string;           // The original word (with tashkeel if available)
+  match: boolean;         // Whether the word was found in the spoken text
+  tashkeelAccuracy?: number; // 0–1 how many diacritics matched on this word
+}
+
+interface AnalysisResult {
+  score: number;
+  wordAccuracy: number;
+  tashkeelScore: number;
+  wordResults: WordMatch[];
+  feedback: string[];
+  recognizedText: string;
+}
+
+/** Analyse the user's spoken text against the Hadith reference. */
+function analyzeSpeech(spokenText: string, referenceText: string): AnalysisResult {
+  const refNorm = normalizeArabic(referenceText);
+  const spokenNorm = normalizeArabic(spokenText);
+
+  const refWords = refNorm.split(/\s+/).filter(Boolean);
+  const spokenWords = spokenNorm.split(/\s+/).filter(Boolean);
+
+  if (refWords.length === 0) {
+    return {
+      score: 0,
+      wordAccuracy: 0,
+      tashkeelScore: 0,
+      wordResults: [],
+      feedback: ['Reference text is empty.'],
+      recognizedText: spokenText,
+    };
+  }
+
+  // ── Word-level matching ──
   const spokenCopy = [...spokenWords];
-  const origCopy = [...origWords];
+  let matchCount = 0;
+  const wordResults: WordMatch[] = [];
 
-  // Check each original word against spoken
-  for (const origWord of origWords) {
-    const idx = spokenCopy.indexOf(origWord);
-    if (idx !== -1) {
-      correctWords.push(origWord);
-      matches++;
-      spokenCopy[idx] = ''; // Mark as used
-    } else {
-      missingWords.push(origWord);
+  for (const refWord of refWords) {
+    const idx = spokenCopy.indexOf(refWord);
+    const found = idx !== -1;
+    if (found) {
+      matchCount++;
+      spokenCopy[idx] = ''; // mark used
+    }
+    wordResults.push({ word: refWord, match: found });
+  }
+
+  const wordAccuracy = Math.round((matchCount / refWords.length) * 100);
+
+  // ── Character-level + tashkeel comparison ──
+  let charMatch = 0;
+  let charTotal = Math.max(refNorm.length, 1);
+  for (let i = 0; i < Math.min(refNorm.length, spokenNorm.length); i++) {
+    if (refNorm[i] === spokenNorm[i]) charMatch++;
+  }
+  const score = Math.round((charMatch / charTotal) * 100);
+
+  // ── Tashkeel accuracy ──
+  const refTashkeel = extractTashkeel(referenceText);
+  const spokenTashkeel = extractTashkeel(spokenText);
+  const tashkeelResult = compareTashkeel(refTashkeel, spokenTashkeel, refNorm.length);
+  const tashkeelScore = Math.round((tashkeelResult.correct / tashkeelResult.total) * 100);
+
+  // ── Per-word tashkeel accuracy ──
+  // (We assign each letter to its word for granularity)
+  if (tashkeelResult.total > 1) {
+    // Update wordResults with tashkeel accuracy per word
+    let letterPos = 0;
+    for (let wi = 0; wi < wordResults.length && wi < refWords.length; wi++) {
+      const wordLen = refWords[wi].length;
+      if (wordLen === 0) continue;
+      let wordTashkeelCorrect = 0;
+      let wordTashkeelTotal = 0;
+      for (let li = 0; li < wordLen; li++, letterPos++) {
+        const refD = refTashkeel.get(letterPos) || [];
+        const spokenD = spokenTashkeel.get(letterPos) || [];
+        const refSet = new Set(refD);
+        const spokenSet = new Set(spokenD);
+        for (const d of refSet) {
+          wordTashkeelTotal++;
+          if (spokenSet.has(d)) wordTashkeelCorrect++;
+        }
+      }
+      wordResults[wi].tashkeelAccuracy =
+        wordTashkeelTotal > 0
+          ? Math.round((wordTashkeelCorrect / wordTashkeelTotal) * 100)
+          : undefined;
     }
   }
 
-  // Remaining spoken words are extras
-  const extraWords = spokenCopy.filter(w => w !== '');
+  // ── Feedback generation ──
+  const feedback: string[] = [];
 
-  const totalWords = Math.max(origWords.length, 1);
-  const score = Math.round((matches / totalWords) * 100);
+  if (wordAccuracy >= 90 && tashkeelScore >= 90) {
+    feedback.push('🌟 ممتاز! Your recitation is excellent with correct tashkeel.');
+    feedback.push(`Word accuracy: ${wordAccuracy}% · Tashkeel accuracy: ${tashkeelScore}%`);
+  } else if (wordAccuracy >= 75) {
+    feedback.push(`👍 Good word recognition (${wordAccuracy}%).`);
+    if (tashkeelScore < 75) {
+      feedback.push(`Pay attention to the diacritics (tashkeel) — only ${tashkeelScore}% correct.`);
+      feedback.push('Focus on pronouncing fatha, damma, kasra, and shadda clearly.');
+    } else {
+      feedback.push(`Tashkeel accuracy is good at ${tashkeelScore}%.`);
+    }
+  } else if (wordAccuracy >= 50) {
+    feedback.push(`💪 Partial match (${wordAccuracy}% words recognized).`);
+    feedback.push('Try slowing down and pronouncing each word separately.');
+    if (tashkeelScore < 60) {
+      feedback.push('Also work on the vowel sounds (harakat) — they change the meaning!');
+    }
+  } else {
+    feedback.push('🎯 Most words were not recognized. Tips:');
+    feedback.push('• Speak clearly and at a moderate pace');
+    feedback.push('• Make sure your microphone is close');
+    feedback.push('• Practice shorter phrases first');
+  }
+
+  if (spokenWords.length > refWords.length * 1.5) {
+    feedback.push('You spoke more words than expected — try to match the exact phrase.');
+  }
 
   return {
     score,
-    correctWords,
-    wrongWords: wrongWords,
-    missingWords,
-    extraWords,
+    wordAccuracy,
+    tashkeelScore,
+    wordResults,
+    feedback,
+    recognizedText: spokenText,
   };
 }
 
-// Generate user-friendly feedback
-function generateFeedback(score: number, result: { correctWords: string[], missingWords: string[], extraWords: string[] }): { 
-  level: string; 
-  emoji: string; 
-  message: string; 
-  tips: string[];
-} {
-  if (score >= 90) {
-    return {
-      level: 'ممتاز',
-      emoji: '🌟',
-      message: 'Excellent! Your pronunciation is very accurate!',
-      tips: ['You sound like a native speaker!', 'Keep up the great work!'],
-    };
-  } else if (score >= 75) {
-    return {
-      level: 'جيد جداً',
-      emoji: '✨',
-      message: 'Very good! Almost perfect pronunciation.',
-      tips: ['Try to slow down a bit', 'Focus on the letter ع and ح sounds'],
-    };
-  } else if (score >= 60) {
-    return {
-      level: 'جيد',
-      emoji: '👍',
-      message: 'Good effort! You got most of the words right.',
-      tips: result.missingWords.length > 0 
-        ? [`Practice these words: ${result.missingWords.slice(0, 3).join('، ')}`]
-        : ['Try to articulate each letter clearly'],
-    };
-  } else if (score >= 40) {
-    return {
-      level: 'مقبول',
-      emoji: '💪',
-      message: 'You\'re on the right track! Keep practicing.',
-      tips: [
-        'Listen to the audio multiple times',
-        'Break the hadith into smaller parts',
-        'Focus on pronouncing each word separately',
-      ],
-    };
-  } else {
-    return {
-      level: 'تحتاج تمرين',
-      emoji: '🎯',
-      message: 'Keep practicing! Arabic pronunciation takes time.',
-      tips: [
-        'Start with shorter phrases',
-        'Practice the alphabet first',
-        'Use the playback feature to hear the correct pronunciation',
-      ],
-    };
+// ═══════════════════════════════════════════════════════════════════════════
+// OpenAI Whisper Transcription
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function transcribeWithWhisper(audioBlob: Blob, apiKey: string): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', audioBlob, 'recording.webm');
+  formData.append('model', 'whisper-1');
+  formData.append('language', 'ar');
+  formData.append('response_format', 'json');
+
+  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`OpenAI Whisper error (${response.status}): ${body}`);
   }
+
+  const data = await response.json();
+  return (data.text || '').trim();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// POST handler
+// ═══════════════════════════════════════════════════════════════════════════
 
 export async function POST(req: NextRequest) {
   try {
+    const apiKey = getOpenAIKey();
+
+    // ── No API key → clear error, no random fallback ──
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          accuracy: 0,
+          wordAccuracy: 0,
+          pronunciationScore: 0,
+          wordResults: [],
+          feedback: [
+            '⚠️ OpenAI API key is not configured.',
+            'To enable real speech analysis:',
+            '1. Copy .env.example → .env.local',
+            '2. Add your OpenAI API key: OPENAI_API_KEY=sk-...',
+            '3. Restart the server',
+            '',
+            'Get a key at: https://platform.openai.com/api-keys',
+          ],
+          recognizedText: '',
+        },
+        { status: 200 }, // 200 so the frontend can show the feedback
+      );
+    }
+
     const formData = await req.formData();
     const audioFile = formData.get('audio') as Blob | null;
-    // Accept both 'text' and 'targetText' for compatibility
     const originalText = (formData.get('text') || formData.get('targetText')) as string | null;
 
     if (!audioFile || !originalText) {
-      return NextResponse.json({ 
-        error: 'Missing audio file or original text' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Missing audio file or target text' },
+        { status: 400 },
+      );
     }
 
-    const openai = getOpenAI();
-    let transcription: string | null = null;
-    let transcriptionSource = 'demo';
-
-    // Try Hugging Face free Whisper first (no API key needed)
-    transcription = await transcribeWithHuggingFace(audioFile);
-    if (transcription) {
-      transcriptionSource = 'huggingface';
-    } else if (openai) {
-      // Fallback to OpenAI Whisper
-      const file = new File([audioFile], 'recording.webm', { type: audioFile.type });
-      const result = await openai.audio.transcriptions.create({
-        file,
-        model: 'whisper-1',
-        language: 'ar',
-        response_format: 'text',
-      });
-      transcription = result;
-      transcriptionSource = 'openai';
+    // ── Transcribe via OpenAI Whisper ──
+    let transcription: string;
+    try {
+      transcription = await transcribeWithWhisper(audioFile, apiKey);
+    } catch (err: any) {
+      console.error('Whisper transcription failed:', err);
+      return NextResponse.json(
+        {
+          accuracy: 0,
+          wordAccuracy: 0,
+          pronunciationScore: 0,
+          wordResults: [],
+          feedback: [
+            '❌ Transcription failed.',
+            `Error: ${err.message || 'Unknown error'}`,
+            'Check your API key and internet connection.',
+          ],
+          recognizedText: '',
+        },
+        { status: 200 },
+      );
     }
-
-    // ── Build response matching SpeechResult interface ──
-    let score: number;
-    let spokenText: string;
-    let wordAnalysis: { word: string; correct: boolean }[] = [];
-    let feedbackObj: { level: string; emoji: string; message: string; tips: string[] };
 
     if (!transcription) {
-      // Demo mode - simulate a review
-      const words = originalText.split(/\s+/).filter(Boolean);
-      const correctCount = Math.floor(words.length * (0.55 + Math.random() * 0.25));
-      score = Math.round((correctCount / words.length) * 100);
-      spokenText = words.slice(0, Math.floor(words.length * 0.85)).join(' ') + '...';
-      feedbackObj = generateFeedback(score, {
-        correctWords: words.slice(0, correctCount),
-        missingWords: words.slice(correctCount),
-        extraWords: [],
-      });
-      wordAnalysis = words.map((w: string, i: number) => ({
-        word: w,
-        correct: i < correctCount,
-      }));
-    } else {
-      // Real transcription
-      const cleanedTranscription = removeDuplicateWords(transcription.trim());
-      spokenText = cleanedTranscription;
-      const comparison = wordSimilarity(originalText, spokenText);
-      score = comparison.score;
-      feedbackObj = generateFeedback(score, comparison);
-
-      const origWords = normalizeArabic(originalText).split(/\s+/).filter(Boolean);
-      const spokenWords = normalizeArabic(spokenText).split(/\s+/).filter(Boolean);
-
-      wordAnalysis = origWords.map(word => ({
-        word,
-        correct: spokenWords.includes(word),
-      }));
+      return NextResponse.json(
+        {
+          accuracy: 0,
+          wordAccuracy: 0,
+          pronunciationScore: 0,
+          wordResults: [],
+          feedback: ['No speech detected. Please try again with a clearer recording.'],
+          recognizedText: '',
+        },
+        { status: 200 },
+      );
     }
 
-    // Map internal structure → SpeechResult interface
-    const speechResult = {
-      accuracy: score,
-      wordAccuracy: score,
-      pronunciationScore: score,
-      wordResults: wordAnalysis.map(w => ({
-        word: w.word,
-        match: w.correct,
-        // similarity is optional; omit if not computed
-      })),
-      feedback: feedbackObj.tips,
-      recognizedText: spokenText,
-    };
+    // ── Analyze ──
+    const result = analyzeSpeech(transcription, originalText);
 
-    return NextResponse.json(speechResult);
-
+    return NextResponse.json({
+      accuracy: result.score,
+      wordAccuracy: result.wordAccuracy,
+      pronunciationScore: result.tashkeelScore,
+      wordResults: result.wordResults,
+      feedback: result.feedback,
+      recognizedText: result.recognizedText,
+    });
   } catch (err: any) {
     console.error('Speech review error:', err);
-    return NextResponse.json({ 
-      error: err.message || 'Transcription failed'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        accuracy: 0,
+        wordAccuracy: 0,
+        pronunciationScore: 0,
+        wordResults: [],
+        feedback: [`Unexpected error: ${err.message || 'Unknown'}`],
+        recognizedText: '',
+      },
+      { status: 200 },
+    );
   }
 }
