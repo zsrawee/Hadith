@@ -125,7 +125,7 @@
     "stopRecording": "Stop Recording",
     "recordAgain": "Record Again",
     "readThis": "Analyze Recording",
-    "free": "Requires OpenAI API key. See .env.example for setup.",
+    "free": "Free option: Hugging Face token. See .env.example.",
     "loadFailed": "Failed to load hadith",
     "newHadith": "New Hadith",
     "accuracy": "Accuracy",
@@ -136,7 +136,7 @@
     "noSpeech": "(No speech detected)",
     "practiceAgain": "Practice Again",
     "tryAnother": "Try Another Hadith",
-    "browserInfo": "🎤 Audio is sent securely to OpenAI Whisper for transcription. Configure your API key in the .env.local file.",
+    "browserInfo": "🎤 Audio is sent to Hugging Face Whisper (free) or OpenAI Whisper. Configure HF_TOKEN or OPENAI_API_KEY in .env.local.",
     "showEnglish": "Show English Translation",
     "hideEnglish": "Hide English Translation",
     "results": {

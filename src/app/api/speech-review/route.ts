@@ -1,12 +1,21 @@
 /**
  * Speech Review API
  *
- * Transcribes the user's recorded speech using OpenAI Whisper (requires API key),
- * then compares it to the target Hadith text with diacritics-aware (tashkeel) analysis.
+ * Transcribes the user's recorded speech using one of these backends:
  *
- * ── API Key ──────────────────────────────────────────────────────────────
- * Set OPENAI_API_KEY in .env.local (copy from .env.example).
- * Without it, the API returns a clear error — no random/demo mode.
+ *   1. Hugging Face Inference API (FREE, 30k requests/month)
+ *      → Set HF_TOKEN in .env.local
+ *      → Uses openai/whisper-large-v3 or NVIDIA FastConformer
+ *
+ *   2. OpenAI Whisper API
+ *      → Set OPENAI_API_KEY in .env.local
+ *
+ * After transcription, compares against the target Hadith with
+ * diacritics-aware (tashkeel) analysis — tracks fatha, damma, kasra, shadda
+ * independently from base letters.
+ *
+ * ── Configuration ────────────────────────────────────────────────────────
+ * See .env.example for setup.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -16,8 +25,23 @@ import { NextRequest, NextResponse } from 'next/server';
 // Config
 // ═══════════════════════════════════════════════════════════════════════════
 
+function getHFToken(): string | null {
+  return process.env.HF_TOKEN?.trim() || null;
+}
+
 function getOpenAIKey(): string | null {
   return process.env.OPENAI_API_KEY?.trim() || null;
+}
+
+function getTranscriptionProvider(): {
+  name: 'huggingface' | 'openai' | null;
+  key: string | null;
+} {
+  const hf = getHFToken();
+  if (hf) return { name: 'huggingface', key: hf };
+  const oa = getOpenAIKey();
+  if (oa) return { name: 'openai', key: oa };
+  return { name: null, key: null };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -237,20 +261,70 @@ function analyzeSpeech(spokenText: string, referenceText: string): AnalysisResul
 // OpenAI Whisper Transcription
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function transcribeWithWhisper(audioBlob: Blob, apiKey: string): Promise<string> {
+// ═══════════════════════════════════════════════════════════════════════════
+// Transcription Backends
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Transcribe via Hugging Face Inference API (FREE tier, 30k requests/month).
+ * Uses openai/whisper-large-v3 (or you can switch to NVIDIA FastConformer).
+ * No credit card needed — just a free HF token from huggingface.co/settings/tokens
+ */
+async function transcribeWithHuggingFace(
+  audioBlob: Blob,
+  token: string,
+): Promise<string> {
+  // Convert blob to ArrayBuffer for the API
+  const arrayBuffer = await audioBlob.arrayBuffer();
+
+  // Try whisper-large-v3 first (best Arabic support)
+  const response = await fetch(
+    'https://api-inference.huggingface.co/models/openai/whisper-large-v3',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'audio/webm',
+      },
+      body: arrayBuffer,
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.text();
+    // If model is loading (503), HF may be loading it — tell the user
+    if (response.status === 503) {
+      throw new Error(
+        'Hugging Face model is loading. Please wait a few seconds and try again. ' +
+        'First request may take ~30s to spin up the model.',
+      );
+    }
+    throw new Error(`Hugging Face error (${response.status}): ${body}`);
+  }
+
+  const data = await response.json();
+  return (data.text || '').trim();
+}
+
+/** Transcribe via OpenAI Whisper API (paid, but small free credits on signup). */
+async function transcribeWithOpenAI(
+  audioBlob: Blob,
+  apiKey: string,
+): Promise<string> {
   const formData = new FormData();
   formData.append('file', audioBlob, 'recording.webm');
   formData.append('model', 'whisper-1');
   formData.append('language', 'ar');
   formData.append('response_format', 'json');
 
-  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
+  const response = await fetch(
+    'https://api.openai.com/v1/audio/transcriptions',
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: formData,
     },
-    body: formData,
-  });
+  );
 
   if (!response.ok) {
     const body = await response.text();
@@ -267,10 +341,10 @@ async function transcribeWithWhisper(audioBlob: Blob, apiKey: string): Promise<s
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = getOpenAIKey();
+    const provider = getTranscriptionProvider();
 
-    // ── No API key → clear error, no random fallback ──
-    if (!apiKey) {
+    // ── No provider configured → show guidance ──
+    if (!provider.name) {
       return NextResponse.json(
         {
           accuracy: 0,
@@ -278,23 +352,31 @@ export async function POST(req: NextRequest) {
           pronunciationScore: 0,
           wordResults: [],
           feedback: [
-            '⚠️ OpenAI API key is not configured.',
-            'To enable real speech analysis:',
-            '1. Copy .env.example → .env.local',
-            '2. Add your OpenAI API key: OPENAI_API_KEY=sk-...',
-            '3. Restart the server',
+            '🎤 Speech Practice needs one of these:',
             '',
-            'Get a key at: https://platform.openai.com/api-keys',
+            '────────── FREE ──────────',
+            '1. سجل في Hugging Face (مجاني)',
+            '   https://huggingface.co/join',
+            '2. Settings → Access Tokens → New token',
+            '3. حط التوكن في ملف .env.local:',
+            '   HF_TOKEN=hf_your-token-here',
+            '',
+            '────────── PAID ──────────',
+            'أو استخدم OpenAI:',
+            '   OPENAI_API_KEY=sk-...',
+            '',
+            'شوف .env.example للتفاصيل',
           ],
           recognizedText: '',
         },
-        { status: 200 }, // 200 so the frontend can show the feedback
+        { status: 200 },
       );
     }
 
     const formData = await req.formData();
     const audioFile = formData.get('audio') as Blob | null;
-    const originalText = (formData.get('text') || formData.get('targetText')) as string | null;
+    const originalText = (formData.get('text') ||
+      formData.get('targetText')) as string | null;
 
     if (!audioFile || !originalText) {
       return NextResponse.json(
@@ -303,12 +385,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Transcribe via OpenAI Whisper ──
+    // ── Transcribe ──
     let transcription: string;
     try {
-      transcription = await transcribeWithWhisper(audioFile, apiKey);
+      if (provider.name === 'huggingface') {
+        transcription = await transcribeWithHuggingFace(audioFile, provider.key!);
+      } else {
+        transcription = await transcribeWithOpenAI(audioFile, provider.key!);
+      }
     } catch (err: any) {
-      console.error('Whisper transcription failed:', err);
+      console.error('Transcription failed:', err);
+      const isHf = provider.name === 'huggingface';
       return NextResponse.json(
         {
           accuracy: 0,
@@ -318,7 +405,10 @@ export async function POST(req: NextRequest) {
           feedback: [
             '❌ Transcription failed.',
             `Error: ${err.message || 'Unknown error'}`,
-            'Check your API key and internet connection.',
+            '',
+            isHf
+              ? '💡 Hugging Face: تأكد من التوكن واتصل بالإنترنت'
+              : '💡 OpenAI: تأكد من المفتاح والرصيد',
           ],
           recognizedText: '',
         },
@@ -333,7 +423,10 @@ export async function POST(req: NextRequest) {
           wordAccuracy: 0,
           pronunciationScore: 0,
           wordResults: [],
-          feedback: ['No speech detected. Please try again with a clearer recording.'],
+          feedback: [
+            'No speech detected.',
+            'تأكد من أن الميكروفون قريب منك وتحدث بوضوح',
+          ],
           recognizedText: '',
         },
         { status: 200 },

@@ -125,7 +125,7 @@
     "stopRecording": "إيقاف التسجيل",
     "recordAgain": "تسجيل مرة أخرى",
     "readThis": "تحليل التسجيل",
-    "free": "يتطلب مفتاح OpenAI API. انظر .env.example للإعداد.",
+    "free": "مجاني: توكن Hugging Face. انظر .env.example.",
     "loadFailed": "فشل تحميل الحديث",
     "newHadith": "حديث آخر",
     "accuracy": "الدقة",
@@ -136,7 +136,7 @@
     "noSpeech": "(لم يتم اكتشاف كلام)",
     "practiceAgain": "تمرن مرة أخرى",
     "tryAnother": "جرب حديث آخر",
-    "browserInfo": "🎤 يتم إرسال الصوت بشكل آمن إلى OpenAI Whisper للنسخ. قم بتعيين OPENAI_API_KEY في ملف .env.local.",
+    "browserInfo": "🎤 يتم إرسال الصوت إلى Hugging Face Whisper (مجاني) أو OpenAI Whisper. ضبط HF_TOKEN أو OPENAI_API_KEY في .env.local.",
     "showEnglish": "إظهار الترجمة الإنجليزية",
     "hideEnglish": "إخفاء الترجمة الإنجليزية",
     "results": {
