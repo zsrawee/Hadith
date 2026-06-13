@@ -139,6 +139,46 @@ Contributions are welcome! Feel free to:
 
 ---
 
+## 📱 Native Mobile Apps (Android & iOS)
+
+This monorepo also includes native mobile applications with Home Screen widgets for both **Android** (Kotlin, Jetpack Glance) and **iOS** (Swift, SwiftUI, WidgetKit).
+
+### 🟢 Android — `android/`
+
+| Component | Technology | Description |
+|-----------|-----------|-------------|
+| **Widget** | Jetpack Glance (Kotlin) | Home Screen widget displaying random Hadith with Arabic text + Sanad |
+| **Show EN Toggle** | Glance clickable + PendingIntent | Dynamically switches between Arabic and English |
+| **Speech Practice** | `SpeechRecognizer` via PendingIntent deep link | Opens `SpeechPracticeActivity` with the Hadith ID |
+| **Main App** | Jetpack Compose + Navigation | Full-screen Hadith browser + speech practice UI |
+
+**Setup:**
+```bash
+cd android
+./gradlew assembleDebug
+```
+Install the APK on a device/emulator, add the "Hadith of the Day" widget to your home screen.
+
+### 🔵 iOS — `ios/`
+
+| Component | Technology | Description |
+|-----------|-----------|-------------|
+| **Widget** | WidgetKit (SwiftUI) | Home Screen widget (iOS 14+) with interactive toggle |
+| **Show EN Toggle** | `AppIntent` (iOS 17+) / `Link` fallback | Interactive widget button to switch translations |
+| **Speech Practice** | `SFSpeechRecognizer` via custom URL scheme | Opens main app via `hadithapp://practice?id=XYZ` |
+| **Main App** | SwiftUI | Hadith browser + speech practice with `SFSpeechRecognizer` |
+
+**Setup (XcodeGen):**
+```bash
+cd ios
+# Install XcodeGen: https://github.com/Yonat/XcodeGen
+xcodegen generate
+open HadithWidget.xcodeproj
+```
+Select a team, run on device/simulator (iOS 17+ recommended for interactive widgets).
+
+---
+
 ## 🙏 Credits
 
 - **Hadith Database**: [faressoft/hadith](https://github.com/faressoft/hadith) — Comprehensive hadith collection database

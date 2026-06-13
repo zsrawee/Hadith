@@ -1,0 +1,48 @@
+name: HadithWidget
+options:
+  bundleIdPrefix: com.hadith
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.2"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+
+targets:
+
+  HadithWidgetApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: HadithWidgetApp
+        excludes:
+          - "Info.plist"
+    info:
+      path: HadithWidgetApp/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hadith.widget
+        INFOPLIST_FILE: HadithWidgetApp/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        DEVELOPMENT_TEAM: "" # Set your team ID here
+    entitlements:
+      path: HadithWidgetApp/HadithWidgetApp.entitlements
+    dependencies:
+      - target: HadithWidgetExtension
+
+  HadithWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: HadithWidgetExtension
+        excludes:
+          - "Info.plist"
+    info:
+      path: HadithWidgetExtension/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hadith.widget.widget-extension
+        INFOPLIST_FILE: HadithWidgetExtension/Info.plist
+    entitlements:
+      path: HadithWidgetExtension/HadithWidgetExtension.entitlements
