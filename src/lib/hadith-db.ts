@@ -57,55 +57,45 @@ async function downloadDB(targetPath: string): Promise<void> {
   console.log('✅ Hadith DB downloaded to', targetPath);
 }
 
-/** Resolve database path: check cache, then download, then fallback to local dev */
+/** Resolve database path: check cache, then use bundled file, then download */
 async function resolveDBPath(): Promise<string> {
   const isVercel = !!process.env.VERCEL;
   
-  // 1. Check /tmp cache (warm starts and recent downloads)
+  // 1. Check /tmp cache (warm starts - fast)
   const cachePath = path.join(os.tmpdir(), 'hadith-cache', 'hadith.db');
   if (fileExists(cachePath)) {
     console.log('✅ Using cached DB at', cachePath);
     return cachePath;
   }
 
-  // 2. Download from URL (for Vercel or when HADITH_DB_URL is set)
+  // 2. Use bundled DB file (primary path - works on Vercel AND local after prebuild)
+  // This path is traced by Vercel bundler → ONE copy (133MB) in function bundle
+  const publicPath = path.join(process.cwd(), 'public', 'data', 'hadith.db');
+  if (fileExists(publicPath)) {
+    console.log('✅ Using bundled DB at', publicPath);
+    return publicPath;
+  }
+
+  // 3. Download from URL (fallback if HADITH_DB_URL is set)
   const dbUrl = getDBUrl();
   if (dbUrl) {
-    console.log('⏳ DB not cached, downloading from:', dbUrl);
+    console.log('⏳ DB not bundled, downloading from:', dbUrl);
     try {
       await downloadDB(cachePath);
       return cachePath;
     } catch (downloadErr: any) {
       console.error('❌ DB download failed:', downloadErr.message);
-      if (isVercel) {
-        throw new Error(
-          'Failed to download DB from ' + dbUrl + '. ' +
-          'Ensure HADITH_DB_URL is set in Vercel project settings, ' +
-          'or the deployment URL serves /data/hadith.db. ' +
-          'Original error: ' + downloadErr.message
-        );
-      }
-      // On local, fall through to local file fallback
+      // Fall through to error
     }
-  } else if (isVercel) {
-    // On Vercel with no download URL - this is a config error
-    throw new Error(
-      'Hadith DB not found on Vercel. ' +
-      'Set HADITH_DB_URL in Vercel project settings to the DB file URL, ' +
-      'or ensure VERCEL_URL is available for auto-detection.'
-    );
-  }
-
-  // 3. Fallback: local development paths (only runs locally, not on Vercel)
-  const publicPath = path.join(process.cwd(), 'public', 'data', 'hadith.db');
-  if (fileExists(publicPath)) {
-    console.log('✅ Found local DB at', publicPath);
-    return publicPath;
   }
 
   throw new Error(
-    'Hadith DB not found. For local dev: run "npm run prebuild". ' +
-    'For Vercel: set HADITH_DB_URL environment variable.'
+    'Hadith DB not found. ' +
+    (isVercel
+      ? 'On Vercel: ensure prebuild script runs (copies DB to public/data/). ' +
+        'Or set HADITH_DB_URL in Vercel project settings.'
+      : 'For local dev: run "npm run prebuild" to copy DB to public/data/.'
+    )
   );
 }
 
