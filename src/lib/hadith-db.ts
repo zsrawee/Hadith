@@ -68,9 +68,8 @@ async function downloadDB(targetPath: string): Promise<void> {
 async function resolveDBPath(): Promise<string> {
   // 1. Check the default package location
   const localPaths = [
-    // Check public/data/ first (copied during build for Vercel deployment)
+    // Check public/data/ first (copied during prebuild for Vercel deployment)
     path.join(process.cwd(), 'public', 'data', 'hadith.db'),
-    path.join(__dirname, 'data', 'hadith.db'),
   ];
   
   for (const p of localPaths) {
