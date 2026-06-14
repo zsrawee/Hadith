@@ -182,7 +182,7 @@ export const hadithAPI = {
   ): Promise<{ hadiths: any[]; total: number }> {
     await initDB();
 
-    const countSql = 'SELECT COUNT(*) as total FROM hadith_content WHERE c1 = ?';
+    let countSql = 'SELECT COUNT(*) as total FROM hadith_content WHERE c1 = ?';
     const countParams: any[] = [collectionId];
     if (options.bookId) {
       countSql += ' AND c2 = ?';
