@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
     const data = await hadithAPI.getHadiths(collectionId, { limit, offset, bookId });
     return NextResponse.json(data);
   } catch (err: any) {
-    console.error('API Error (hadiths):', err);
+    // DYNAMIC_SERVER_USAGE is expected during build - not a real error
+    if (err?.digest !== 'DYNAMIC_SERVER_USAGE') {
+      console.error('API Error (hadiths):', err);
+    }
     return NextResponse.json({ error: 'An error occurred while fetching hadiths.' }, { status: 500 });
   }
 }

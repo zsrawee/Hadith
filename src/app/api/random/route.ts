@@ -10,7 +10,9 @@ export async function GET(req: NextRequest) {
     if (!data.arabic) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(data);
   } catch (err: any) {
-    console.error('API Error (random):', err);
+    if (err?.digest !== 'DYNAMIC_SERVER_USAGE') {
+      console.error('API Error (random):', err);
+    }
     return NextResponse.json({ error: 'An error occurred while fetching a random hadith.' }, { status: 500 });
   }
 }

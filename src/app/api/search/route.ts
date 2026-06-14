@@ -47,7 +47,9 @@ export async function GET(req: NextRequest) {
     ];
     return NextResponse.json({ results: combined, count: total });
   } catch (err: any) {
-    console.error('API Error (search):', err);
+    if (err?.digest !== 'DYNAMIC_SERVER_USAGE') {
+      console.error('API Error (search):', err);
+    }
     return NextResponse.json({ error: 'An error occurred while searching.' }, { status: 500 });
   }
 }

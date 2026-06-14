@@ -48,6 +48,9 @@ function fileExists(filePath: string): boolean {
 
 /** Download the DB file to a writable location (e.g. /tmp) */
 async function downloadDB(targetPath: string): Promise<void> {
+  if (!DB_DOWNLOAD_URL) {
+    throw new Error('HADITH_DB_URL is not configured. DB file not found locally.');
+  }
   console.log('⏳ Downloading hadith database from CDN...');
   const response = await fetch(DB_DOWNLOAD_URL);
   if (!response.ok) throw new Error(`Failed to download DB: ${response.status} ${response.statusText}`);
@@ -65,7 +68,6 @@ async function downloadDB(targetPath: string): Promise<void> {
 async function resolveDBPath(): Promise<string> {
   // 1. Check the default package location
   const localPaths = [
-    path.join(process.cwd(), 'public', 'data', 'hadith.db'),
     path.join(process.cwd(), 'node_modules', 'hadith', 'data', 'hadith.db'),
     path.join(__dirname, 'data', 'hadith.db'),
   ];
