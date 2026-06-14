@@ -34,8 +34,8 @@ export function getCollectionNames(): Record<number, { ar: string; en: string }>
   return COLLECTION_NAMES;
 }
 
-/** URL for downloading the hadith database (CDN fallback) */
-const DB_DOWNLOAD_URL = process.env.HADITH_DB_URL || 'https://cdn.jsdelivr.net/npm/hadith@1.3.0/data/hadith.db';
+/** URL for downloading the hadith database (CDN fallback). Set HADITH_DB_URL env var for Vercel deployment */
+const DB_DOWNLOAD_URL = process.env.HADITH_DB_URL || '';//cdn.jsdelivr.net/npm/hadith@1.3.0/data/hadith.db';
 
 /** Check if a file exists */
 function fileExists(filePath: string): boolean {
