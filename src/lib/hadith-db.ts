@@ -59,6 +59,8 @@ async function downloadDB(targetPath: string): Promise<void> {
 
 /** Resolve database path: check cache, then download, then fallback to local dev */
 async function resolveDBPath(): Promise<string> {
+  const isVercel = !!process.env.VERCEL;
+  
   // 1. Check /tmp cache (warm starts and recent downloads)
   const cachePath = path.join(os.tmpdir(), 'hadith-cache', 'hadith.db');
   if (fileExists(cachePath)) {
@@ -67,14 +69,34 @@ async function resolveDBPath(): Promise<string> {
   }
 
   // 2. Download from URL (for Vercel or when HADITH_DB_URL is set)
-  if (getDBUrl()) {
-    console.log('⏳ DB not cached, downloading...');
-    await downloadDB(cachePath);
-    return cachePath;
+  const dbUrl = getDBUrl();
+  if (dbUrl) {
+    console.log('⏳ DB not cached, downloading from:', dbUrl);
+    try {
+      await downloadDB(cachePath);
+      return cachePath;
+    } catch (downloadErr: any) {
+      console.error('❌ DB download failed:', downloadErr.message);
+      if (isVercel) {
+        throw new Error(
+          'Failed to download DB from ' + dbUrl + '. ' +
+          'Ensure HADITH_DB_URL is set in Vercel project settings, ' +
+          'or the deployment URL serves /data/hadith.db. ' +
+          'Original error: ' + downloadErr.message
+        );
+      }
+      // On local, fall through to local file fallback
+    }
+  } else if (isVercel) {
+    // On Vercel with no download URL - this is a config error
+    throw new Error(
+      'Hadith DB not found on Vercel. ' +
+      'Set HADITH_DB_URL in Vercel project settings to the DB file URL, ' +
+      'or ensure VERCEL_URL is available for auto-detection.'
+    );
   }
 
-  // 3. Fallback: local development paths
-  // Note: public/data/hadith.db is created by the prebuild script
+  // 3. Fallback: local development paths (only runs locally, not on Vercel)
   const publicPath = path.join(process.cwd(), 'public', 'data', 'hadith.db');
   if (fileExists(publicPath)) {
     console.log('✅ Found local DB at', publicPath);
@@ -82,7 +104,8 @@ async function resolveDBPath(): Promise<string> {
   }
 
   throw new Error(
-    'Hadith DB not found. Run "npm run prebuild" or set HADITH_DB_URL environment variable.'
+    'Hadith DB not found. For local dev: run "npm run prebuild". ' +
+    'For Vercel: set HADITH_DB_URL environment variable.'
   );
 }
 
