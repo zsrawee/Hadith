@@ -79,10 +79,50 @@ export function isSpeechRecognitionSupported(): boolean {
   );
 }
 
+/** Local interface for the Web Speech API recognizer to avoid depending on browser type declarations */
+export interface SpeechRecognizer {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives?: number;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((event: SpeechRecognizerEvent) => void) | null;
+  onerror: ((event: SpeechRecognizerErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
+
+export interface SpeechRecognizerEvent {
+  readonly resultIndex: number;
+  readonly results: SpeechRecognizerResultList;
+}
+
+export interface SpeechRecognizerResultList {
+  readonly length: number;
+  [index: number]: SpeechRecognizerResult;
+}
+
+export interface SpeechRecognizerResult {
+  readonly isFinal: boolean;
+  readonly length: number;
+  [index: number]: SpeechRecognizerAlternative;
+}
+
+export interface SpeechRecognizerAlternative {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+
+export interface SpeechRecognizerErrorEvent {
+  readonly error: string;
+  readonly message?: string;
+}
+
 /**
  * Create a Web Speech recognition instance configured for Arabic.
  */
-export function createArabicSpeechRecognizer(): SpeechRecognition | null {
+export function createArabicSpeechRecognizer(): SpeechRecognizer | null {
   if (typeof window === "undefined") return null;
 
   const SpeechRecognitionAPI =

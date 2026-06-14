@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { isSpeechRecognitionSupported, createArabicSpeechRecognizer } from "@/lib/speechAnalysis";
+import { isSpeechRecognitionSupported, createArabicSpeechRecognizer, type SpeechRecognizer, type SpeechRecognizerEvent } from "@/lib/speechAnalysis";
 
 interface SpeechRecorderProps {
   onRecordingComplete: (spokenText: string) => void;
@@ -22,7 +22,7 @@ export default function SpeechRecorder({
   const [recognizedText, setRecognizedText] = useState("");
   const [browserSupport, setBrowserSupport] = useState(true);
 
-  const recognizerRef = useRef<SpeechRecognition | null>(null);
+  const recognizerRef = useRef<SpeechRecognizer | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function SpeechRecorder({
     recognizerRef.current = recognizer;
     let finalText = "";
 
-    recognizer.onresult = (event: SpeechRecognitionEvent) => {
+    recognizer.onresult = (event: SpeechRecognizerEvent) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
           finalText += event.results[i][0].transcript + " ";
