@@ -29,7 +29,7 @@ function SpeechPracticeContent() {
   const loadHadithByUrn = useCallback(async (urn: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/hadith/urn/${urn}`);
+      const res = await fetch(`/api/hadiths/${urn}`);
       if (!res.ok) throw new Error("Not found");
       setHadith(await res.json());
       setError(null);

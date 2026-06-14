@@ -38,12 +38,12 @@ export default function BrowsePage() {
       return;
     }
     setLoadingHadiths(true);
-    fetch(`/api/hadiths/${selectedBook}?page=${page}&limit=20`)
+    fetch(`/api/hadiths?collection=${selectedBook}&page=${page}&limit=20`)
       .then((r) => r.json())
       .then((data) => {
-        const newHadiths = data.hadiths || data;
+        const newHadiths = data.hadiths || data.arabic || data;
         setHadiths((prev) => (page === 1 ? newHadiths : [...prev, ...newHadiths]));
-        setHasMore(newHadiths.length === 20);
+        setHasMore(Array.isArray(newHadiths) && newHadiths.length === 20);
       })
       .catch(() => {})
       .finally(() => setLoadingHadiths(false));
